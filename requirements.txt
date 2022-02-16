@@ -1,0 +1,14 @@
+Brian2==2.4.2
+brian2tools==0.2.1.1
+matplotlib==3.3.4
+numpy==1.20.0
+opencv-python==4.5.1.48
+scikit-learn==0.24.1
+scipy==1.6.0
+tqdm==4.56.1
+h5py==3.2.1
+dill==0.3.3
+torch==1.7.1
+Pillow==7.2.0
+torchvision==0.8.2
+BindsNET==0.2.7
