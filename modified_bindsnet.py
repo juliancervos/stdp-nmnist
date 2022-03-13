@@ -77,8 +77,9 @@ class FactoredConnection(Connection):
 class DiehlCookSTDP(LearningRule):
     # language=rst
     """
-    STDP rule from Diehl&Cook2015, involving only post-synaptic spiking activity. The post-synaptic
-    update is positive and is dependent on the magnitude of the synaptic weights and on the pre-synaptic trace.
+    STDP rule from `(Diehl & Cook 2015)<https://www.frontiersin.org/articles/10.3389/fncom.2015.00099/full>`_,
+    triggered only by post-synaptic spiking activity. The post-synaptic update is positive and is dependent on the
+    magnitude of the synaptic weights and on the pre-synaptic trace.
     """
 
     def __init__(
@@ -91,7 +92,7 @@ class DiehlCookSTDP(LearningRule):
     ) -> None:
         # language=rst
         """
-        Constructor for ``WeightDependentPostPre`` learning rule.
+        Constructor for ``DiehlCookSTDP`` learning rule.
 
         :param connection: An ``AbstractConnection`` object whose weights the
             ``WeightDependentPostPre`` learning rule will modify.
@@ -99,7 +100,6 @@ class DiehlCookSTDP(LearningRule):
         :param reduction: Method for reducing parameter updates along the batch
             dimension.
         :param weight_decay: Constant multiple to decay weights by on each iteration.
-        :param x_tar: Constant target for the pre-synaptic trace. Controls the potentiation-depression balance.
         """
         super().__init__(
             connection=connection,
@@ -149,7 +149,7 @@ class DiehlCookSTDP(LearningRule):
         super().update()
 
 
-class IyerAndBasu2017(Network):
+class SpikingNetwork(Network):
     # language=rst
     """
     Implements the spiking neural network architecture from `(Diehl & Cook 2015)
@@ -185,7 +185,7 @@ class IyerAndBasu2017(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``IyerAndBasu2017``.
+        Constructor for class ``SpikingNetwork``.
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
         :param exc: Strength of synapse weights from excitatory to inhibitory layer.
@@ -193,6 +193,7 @@ class IyerAndBasu2017(Network):
         :param dt: Simulation time step.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events,
             respectively.
+        :param x_tar: Constant target for the pre-synaptic trace. Controls the potentiation-depression balance.
         :param reduction: Method for reducing parameter updates along the minibatch
             dimension.
         :param wmin: Minimum allowed weight on input to excitatory synapses.
@@ -228,12 +229,14 @@ class IyerAndBasu2017(Network):
 
         # Layers
         input_layer = Input(
-            n=self.n_inpt, shape=self.inpt_shape, traces=True,
+            n=self.n_inpt, shape=self.inpt_shape, traces=True, # tc_trace=tc_trace
         )
+        # FUTURE WORK: The time constant of the pre-synaptic trace has deeper implications than the membrane potential one. We started exploring it but couldn't get conclusive results due to some bugs in the code.
+
+        # FUTURE WORK: These are basically modified ALIF nodes. Exploring other neuron models is a possible line of work.
         exc_layer = DiehlAndCookNodes(
             n=self.n_neurons,  # PARAMETER
             traces=False,
-            traces_additive=False,
             rest=-65.0,
             reset=-60.0,
             thresh=thresh,  # PARAMETER
@@ -252,7 +255,7 @@ class IyerAndBasu2017(Network):
             source=input_layer,
             target=exc_layer,
             w=w,
-            update_rule=DiehlCookSTDP,
+            update_rule=DiehlCookSTDP,  # FUTURE WORK: Other learning rules could also be explored.
             nu=nu,
             reduction=reduction,
             wmin=wmin,
@@ -286,6 +289,7 @@ class IyerAndBasu2017(Network):
         self.add_connection(input_exc_conn, source="Input", target="Excitatory")
         self.add_connection(exc_inh_conn, source="Excitatory", target="Inhibitory")
         self.add_connection(inh_exc_conn, source="Inhibitory", target="Excitatory")
+        # FUTURE WORK: The network topology and connectivity is very simplistic. Here is where the most improvement can be made, most likely.
 
 
 # Plotting functions
@@ -387,8 +391,8 @@ def plot_weights(
 
         return im
 
-
-def plot_cumulative_spikes(
+# TODO: Change the units of the plot to spikes/neuron·pattern.
+def plot_spikes_rate(
         spikes: torch.Tensor,
         im: Optional[AxesImage] = None,
         figsize: Tuple[int, int] = (5, 5),
@@ -404,6 +408,7 @@ def plot_cumulative_spikes(
     :param figsize: Horizontal, vertical figure size in inches.
     :param cmap: Matplotlib colormap.
     :param save: file name to save fig, if None = not saving fig.
+    :param update_interval: length of bining window.
     :return: ``AxesImage`` for re-drawing the cumulative spikes plot.
     """
     local_spikes = spikes.detach().clone().cpu().numpy()
@@ -416,6 +421,7 @@ def plot_cumulative_spikes(
 
         ticks_y = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * update_interval))
         im.axes.yaxis.set_major_formatter(ticks_y)
+        # TODO: Ensure proper aspect for all n_neurons-n_train combinations.
 
         plt.title("Spikes elicited in the excitatory layer")
         plt.xlabel("Neurons")
@@ -449,7 +455,7 @@ def plot_cumulative_spikes(
 
         return im
 
-
+# TODO: This one is in a very early stage and could be improved.
 def plot_input_spikes(
         spikes: torch.Tensor,
         im: Optional[AxesImage] = None,
@@ -459,9 +465,9 @@ def plot_input_spikes(
     """
     Plot the spikes generated in the excitatory layer (binned in update intervals).
 
-    :param weights: Weight matrix of ``Connection`` object.
+    :param spikes: Sum of input spikes to be plotted.
+    :param im: Used for re-drawing the input spikes plot.
     :param figsize: Horizontal, vertical figure size in inches.
-    :param cmap: Matplotlib colormap.
     :return: ``AxesImage`` for re-drawing the cumulative spikes plot.
     """
     local_spikes = spikes.detach().clone().cpu().numpy()
@@ -473,6 +479,7 @@ def plot_input_spikes(
 
         plt.title(f"Maximum spike count is: {max_spike_count}")
 
+        # TODO: Set static cmap scale.
         plt.colorbar(im)
         fig.tight_layout()
 
@@ -481,3 +488,92 @@ def plot_input_spikes(
         im.set_data(local_spikes)
 
     return im
+
+def plot_assignments(
+    assignments: torch.Tensor,
+    im: Optional[AxesImage] = None,
+    figsize: Tuple[int, int] = (5, 5),
+    classes: Optional[Sized] = None,
+    save: Optional[str] = None,
+) -> AxesImage:
+    # language=rst
+    """
+    Plot the two-dimensional neuron assignments.
+
+    :param assignments: Vector of neuron label assignments.
+    :param im: Used for re-drawing the assignments plot.
+    :param figsize: Horizontal, vertical figure size in inches.
+    :param classes: Iterable of labels for colorbar ticks corresponding to data labels.
+    :param save: file name to save fig, if None = not saving fig.
+    :return: Used for re-drawing the assigments plot.
+    """
+    locals_assignments = assignments.detach().clone().cpu().numpy()
+
+    if save is not None:
+        plt.ioff()
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.set_title("Categorical assignments")
+
+        if classes is None:
+            color = plt.get_cmap("RdBu", 11)
+            im = ax.matshow(locals_assignments, cmap=color, vmin=-1.5, vmax=9.5)
+        else:
+            color = plt.get_cmap("RdBu", len(classes) + 1)
+            im = ax.matshow(
+                locals_assignments,
+                cmap=color,
+                vmin=-1.5,
+                vmax=len(classes) - 0.5,
+            )
+
+        div = make_axes_locatable(ax)
+        cax = div.append_axes("right", size="5%", pad=0.05)
+
+        if classes is None:
+            cbar = plt.colorbar(im, cax=cax, ticks=list(range(-1, 11)))
+            cbar.ax.set_yticklabels(["none"] + list(range(11)))
+        else:
+            cbar = plt.colorbar(im, cax=cax, ticks=np.arange(-1, len(classes)))
+            cbar.ax.set_yticklabels(["none"] + list(classes))
+
+        ax.set_xticks(())
+        ax.set_yticks(())
+        # fig.tight_layout()
+
+        fig.savefig(save, bbox_inches="tight")
+        plt.close()
+
+        plt.ion()
+        return im, save
+    else:
+        if not im:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.set_title("Categorical assignments")
+
+            if classes is None:
+                color = plt.get_cmap("RdBu", 11)
+                im = ax.matshow(locals_assignments, cmap=color, vmin=-1.5, vmax=9.5)
+            else:
+                color = plt.get_cmap("RdBu", len(classes) + 1)
+                im = ax.matshow(
+                    locals_assignments, cmap=color, vmin=-1.5, vmax=len(classes) - 0.5
+                )
+
+            div = make_axes_locatable(ax)
+            cax = div.append_axes("right", size="5%", pad=0.05)
+
+            if classes is None:
+                cbar = plt.colorbar(im, cax=cax, ticks=list(range(-1, 11)))
+                cbar.ax.set_yticklabels(["none"] + list(range(11)))
+            else:
+                cbar = plt.colorbar(im, cax=cax, ticks=np.arange(-1, len(classes)))
+                cbar.ax.set_yticklabels(["none"] + list(classes))
+
+            ax.set_xticks(())
+            ax.set_yticks(())
+            fig.tight_layout()
+        else:
+            im.set_data(locals_assignments)
+
+        return im

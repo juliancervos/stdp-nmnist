@@ -16,12 +16,13 @@ from bindsnet.evaluation import (
 from bindsnet.analysis.plotting import (
     plot_input,
     plot_spikes,
-    plot_assignments,
+    # plot_assignments,
     plot_performance,
     plot_voltages,
 )
-from modified_bindsnet import IyerAndBasu2017, plot_confusion_matrix, plot_weights, plot_cumulative_spikes, \
-    plot_input_spikes
+from bindsnet.analysis.visualization import summary, plot_weights_movie
+from modified_bindsnet import SpikingNetwork, plot_confusion_matrix, plot_weights, plot_spikes_rate, \
+    plot_input_spikes, plot_assignments
 from NMNIST import NMNIST, SparseToDense
 
 # Parse command line arguments
@@ -43,8 +44,7 @@ parser.add_argument("--n_test", type=int, default=None, help='Number of samples 
 parser.add_argument("--n_train", type=int, default=None, help='Number of samples for the training set (if None, '
                                                               'all are used)')
 parser.add_argument("--pattern_time", type=int, default=105, help='Duration (in milliseconds) of a single pattern.')
-parser.add_argument("--filename_suffix", type=str, default='test', help='Name for the experiment (and resulting '
-                                                                        'files).')
+parser.add_argument("--filename", type=str, default='test', help='Name for the experiment (and resulting files).')
 # Simulation parameters
 parser.add_argument("--dt", type=float, default=1.0, help='Simulation timestep.')
 parser.add_argument("--n_epochs", type=int, default=1, help='Number of training epochs.')
@@ -70,7 +70,7 @@ som = args.som
 n_test = args.n_test
 n_train = args.n_train
 pattern_time = args.pattern_time
-filename_suffix = args.filename_suffix
+filename = args.filename
 dt = args.dt
 n_epochs = args.n_epochs
 n_workers = args.n_workers
@@ -80,7 +80,7 @@ plot = args.plot
 gpu = args.gpu
 
 # Create directories
-directories = ["results", "results/" + filename_suffix]
+directories = ["results", "results/" + filename]
 for directory in directories:
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -119,11 +119,12 @@ weights_mask = (1 - torch.diag(torch.ones(n_neurons))).to(device)
 pattern_repetition_counter = 0
 
 # Build the network
-network = IyerAndBasu2017(n_neurons=n_neurons, inpt_shape=(1, data_dim, data_dim), n_inpt=data_dim_sq, dt=dt,
-                          thresh=thresh, tc_decay=tc_decay, theta_plus=theta_plus, x_tar=x_tar,
-                          weight_factor=1.0, exc=exc, inh=inh, som=som, start_inhib=-5.0, max_inhib=-17.5)
+network = SpikingNetwork(n_neurons=n_neurons, inpt_shape=(1, data_dim, data_dim), n_inpt=data_dim_sq, dt=dt,
+                         thresh=thresh, tc_decay=tc_decay, theta_plus=theta_plus, x_tar=x_tar,
+                         weight_factor=1.0, exc=exc, inh=inh, som=som, start_inhib=-5.0, max_inhib=-17.5)
 if gpu:
     network.to("cuda")
+print(summary(network))
 
 # Record spikes during the simulation
 excitatory_spikes = torch.tensor((int(pattern_time / dt), n_neurons), dtype=torch.bool, device=device)
@@ -144,10 +145,10 @@ training_label_tensor = torch.zeros(0, dtype=torch.int64, device=device)
 
 # Set up monitors for spikes and voltages
 exc_voltage_monitor = Monitor(
-    network.layers["Excitatory"], ["v"], time=int(pattern_time / dt)
+    network.layers["Excitatory"], ["v"], time=int(pattern_time / dt), device=device
 )
 inh_voltage_monitor = Monitor(
-    network.layers["Inhibitory"], ["v"], time=int(pattern_time / dt)
+    network.layers["Inhibitory"], ["v"], time=int(pattern_time / dt), device=device
 )
 network.add_monitor(exc_voltage_monitor, name="exc_voltage")
 network.add_monitor(inh_voltage_monitor, name="inh_voltage")
@@ -155,14 +156,14 @@ network.add_monitor(inh_voltage_monitor, name="inh_voltage")
 spikes = {}
 for layer in set(network.layers):
     spikes[layer] = Monitor(
-        network.layers[layer], state_vars=["s"], time=int(pattern_time / dt)
+        network.layers[layer], state_vars=["s"], time=int(pattern_time / dt), device=device
     )
     network.add_monitor(spikes[layer], name="%s_spikes" % layer)
 
 voltages = {}
 for layer in set(network.layers) - {"Input"}:
     voltages[layer] = Monitor(
-        network.layers[layer], state_vars=["v"], time=int(pattern_time / dt)
+        network.layers[layer], state_vars=["v"], time=int(pattern_time / dt), device=device
     )
     network.add_monitor(voltages[layer], name="%s_voltages" % layer)
 
@@ -268,6 +269,8 @@ for epoch in range(n_epochs):
                 n_labels=n_classes,
                 rates=rates,
             )
+            # FUTURE WORK: Limit the amount of labels used for the neuron assignments, and compare how the
+            # performance of the network varies against the % of labels used.
 
             training_proportion_pred = torch.cat((training_proportion_pred, proportion_pred), dim=0)
             training_label_tensor = torch.cat((training_label_tensor, label_tensor), dim=0)
@@ -300,12 +303,12 @@ for epoch in range(n_epochs):
             input_exc_weights = network.connections[("Input", "Excitatory")].w
             square_weights = get_square_weights(input_exc_weights.view(data_dim_sq, n_neurons), n_neurons_sqrt,
                                                 data_dim)
-            # square_assignments = get_square_assignments(assignments, n_neurons_sqrt)
+            square_assignments = get_square_assignments(assignments, n_neurons_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
             voltages = {"Excitatory": exc_voltages, "Inhibitory": inh_voltages}
             spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
-            # assigns_im = plot_assignments(square_assignments, im=assigns_im)
+            assigns_im = plot_assignments(square_assignments, im=assigns_im)
             perf_ax = plot_performance(accuracy, x_scale=update_interval, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line")
             input_spikes = torch.sum(spikes['Input'].get("s").squeeze(), 0)
@@ -321,17 +324,17 @@ for epoch in range(n_epochs):
                                                 data_dim)
             square_assignments = get_square_assignments(assignments, n_neurons_sqrt)
             plot_weights(square_weights, im=weights_im,
-                         save=f'./results/{filename_suffix}/weights_{filename_suffix}.png')
-            # plot_assignments(square_assignments, im=assigns_im, save=f'./results/{filename_suffix}/assignments'
-            #                                                          f'_{filename_suffix}.png')
-            # plot_performance(accuracy, x_scale=update_interval, ax=perf_ax,
-            #                  save=f'./results/{filename_suffix}/performance_{filename_suffix}.png')
+                         save=f'./results/{filename}/weights_{filename}.png')
+            plot_assignments(square_assignments, im=assigns_im, save=f'./results/{filename}/assignments'
+                                                                     f'_{filename}.png')
+            plot_performance(accuracy, x_scale=update_interval, ax=perf_ax,
+                             save=f'./results/{filename}/performance_{filename}.png')
             plot_confusion_matrix(torch.Tensor.cpu(training_proportion_pred), torch.Tensor.cpu(training_label_tensor),
-                                  save=f'./results/{filename_suffix}/confusion_matrix_{filename_suffix}.png')
-            plot_cumulative_spikes(cumulative_spikes, update_interval=update_interval,
-                                   save=f'./results/{filename_suffix}/cumulative_spikes_{filename_suffix}.png')
-            torch.save(network, f'./results/{filename_suffix}/model_{filename_suffix}.pt')
-            network.save(f'./results/{filename_suffix}/network_{filename_suffix}.npz')
+                                  save=f'./results/{filename}/confusion_matrix_{filename}.png')
+            plot_spikes_rate(cumulative_spikes, save=f'./results/{filename}/cumulative_spikes_{filename}.png',
+                             update_interval=update_interval)
+            torch.save(network, f'./results/{filename}/model_{filename}.pt')
+            network.save(f'./results/{filename}/network_{filename}.npz')
 
         network.reset_state_variables()  # Reset state variables
 
@@ -378,13 +381,13 @@ for step, batch in enumerate(test_dataset):
         else:
             break
 
-    # Add to spikes recording.
+    # Add to spikes recording
     spike_record[0].copy_(excitatory_spikes, non_blocking=True)
 
     # Convert the array of labels into a tensor
     label_tensor = torch.tensor(batch[1], device=device)
 
-    # Get network predictions.
+    # Get network predictions
     all_activity_pred = all_activity(
         spikes=spike_record, assignments=assignments, n_labels=n_classes
     )
@@ -395,7 +398,7 @@ for step, batch in enumerate(test_dataset):
         n_labels=n_classes,
     )
 
-    # Compute network accuracy according to available classification strategies.
+    # Compute network accuracy according to available classification strategies
     accuracy["all"] += float(torch.sum(label_tensor.long() == all_activity_pred).item())
     accuracy["proportion"] += float(
         torch.sum(label_tensor.long() == proportion_pred).item()
@@ -409,7 +412,7 @@ for step, batch in enumerate(test_dataset):
     pbar.update()
 
 plot_confusion_matrix(torch.Tensor.cpu(testing_proportion_pred), torch.Tensor.cpu(testing_label_tensor),
-                      save=f'./results/{filename_suffix}/test_confusion_matrix_{filename_suffix}.png')
+                      save=f'./results/{filename}/test_confusion_matrix_{filename}.png')
 
 print("\nAll activity accuracy: %.2f" % (accuracy["all"] / n_test))
 print("Proportion weighting accuracy: %.2f \n" % (accuracy["proportion"] / n_test))
@@ -418,7 +421,7 @@ print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Testing complete.\n")
 
 # Save logs.
-with open(f'./results/{filename_suffix}/log_{filename_suffix}.txt', 'w+') as log_file:
+with open(f'./results/{filename}/log_{filename}.txt', 'w+') as log_file:
     print(f'''
     All activity accuracy: {accuracy["all"] / n_test}
     Proportion weighting accuracy: {accuracy["proportion"] / n_test} \n

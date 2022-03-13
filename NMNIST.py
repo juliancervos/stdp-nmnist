@@ -8,20 +8,17 @@ from eventpython.eventvision import *
 
 
 class NMNIST(VisionDataset):
-    """`N-MNIST <https://www.garrickorchard.com/datasets/n-mnist>`_ Dataset.
+    # language=rst
+    """
+    `N-MNIST <https://www.garrickorchard.com/datasets/n-mnist>`_ Dataset.
 
-    Args:
-        root (string): Root directory of dataset where ``NMNIST/processed/training.pt``
-            and  ``NMNIST/processed/test.pt`` exist.
-        train (bool, optional): If True, creates dataset from ``training.pt``,
-            otherwise from ``test.pt``.
-        download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-            downloaded again.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
+    :param root: Root directory of dataset where ``NMNIST/processed/training.pt`` and  ``NTIDIGITS/processed/test.pt`` exist.
+    :param train: If True, creates dataset from ``training.pt``, otherwise from ``test.pt``.
+    :param transform: A function/transform that  takes in a tensor and returns a transformed version.
+    :param target_transform: A function/transform that takes in the target and transforms it.
+    :param download: If true, downloads the dataset from the internet and puts it in root directory. If dataset is
+        already downloaded, it is not downloaded again.
+    :param dt: Simulation timestep (used for the binning of the data).
     """
 
     resources = ["https://www.dropbox.com/s/4vghfgan28nt9ih/Train.zip?dl=1",
@@ -55,12 +52,11 @@ class NMNIST(VisionDataset):
             self.data, self.targets = torch.load(pickled_file)
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        # language=rst
         """
-        Args:
-            index (int): Index
+        :param index: Index
 
-        Returns:
-            tuple: (event_image, target) where target is index of the target class.
+        :return: Tuple: (event_image, target) where target is index of the target class.
         """
         ev_img, target = self.data[index], int(self.targets[index])
 
@@ -98,7 +94,10 @@ class NMNIST(VisionDataset):
                                             self.test_file)))
 
     def download(self) -> None:
-        """Download the N-MNIST data if it doesn't exist in processed_folder already."""
+        # language=rst
+        """
+        Download the N-MNIST data if it doesn't exist in processed_folder already.
+        """
 
         if self._check_exists():
             return
@@ -117,8 +116,8 @@ class NMNIST(VisionDataset):
         # Process and save as torch files
         print('Processing...')
 
-        training_set = self.read_event_image_files(os.path.join(self.raw_folder, 'Train'), train=True)
-        test_set = self.read_event_image_files(os.path.join(self.raw_folder, 'Test'), train=False)
+        training_set = self.read_event_image_files(os.path.join(self.raw_folder, 'Train'))
+        test_set = self.read_event_image_files(os.path.join(self.raw_folder, 'Test'))
 
         with open(os.path.join(self.processed_folder, self.training_file), 'wb') as f:
             torch.save(training_set, f)
@@ -130,19 +129,22 @@ class NMNIST(VisionDataset):
     def extra_repr(self) -> str:
         return "Split: {}".format("Train" if self.train is True else "Test")
 
-    def read_event_image_files(self, path: str, train: bool, three_saccades:bool = False) -> Tuple[List[torch.Tensor],
+    def read_event_image_files(self, path: str, three_saccades:bool = False) -> Tuple[List[torch.Tensor],
                                                                                    torch.ByteTensor]:
-        """Reads the data (previously downloaded) consisting of event-based images and extract their labels.
+        # language=rst
+        """
+        Reads the data (previously downloaded) consisting of event-based images and extract their labels.
 
-         Args:
-             path (str): Path to the data file to load (train or test).
+         :parma path: Path to the data file to load (train or test).
+         :param three_saccades: If True, include all 3 saccades from the dataset, otherwise only the first one.
 
-         Returns: tuple (event_images, targets) where event_images is a list of samples and targets is a tensor with
-         their corresponding labels.
+         :return: Tuple (spikes_array, labels) where spikes_array is a list of event_images and labels is a tensor with their
+         corresponding ground-truth.
          """
         # Initialise variables and parameters
         spikes_array, labels = [], []
         reference_matrix = torch.transpose(torch.arange(0, 1156, dtype=torch.int32).view(34, 34), 0, 1)
+        # TODO: Obtain this as an argument from Visual_network.py
         image_time = 315.0
         saccade_time = image_time/3
         number_of_timesteps = int(saccade_time / self.dt)
@@ -189,7 +191,10 @@ class NMNIST(VisionDataset):
 
 
 class SparseToDense(object):
-    """Convert the sparse tensor given in sample to a dense tensor."""
+    # language=rst
+    """
+    Convert the sparse tensor given in sample to a dense tensor.
+    """
 
     def __call__(self, sample):
         dense_spikes = sample.to_dense()
