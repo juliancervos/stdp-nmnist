@@ -1,17 +1,24 @@
 # Summary
 **In short:** This repository contains the code for training a spiking neural network (SNN) on event-based data through a spike-timing-dependent plasticity (STDP) learning rule.
-Although the focus of the project was on the visual modality (with the N-MNIST dataset), an auditory and tactile version of the code is available as well (with the datasets N-TIDIGITS and ST-MNIST).
+Although the focus of the project was on the visual modality (with the N-MNIST dataset), auditory and tactile 
+versions of the code are available as well (with the datasets N-TIDIGITS and ST-MNIST, although performance is very 
+low).
 
 ![Network_architecture](https://user-images.githubusercontent.com/25617825/154169419-25537181-480d-46ff-9e7c-163ffd8748be.png)
 *Adapted from Diehl, P. U., & Cook, M. (2015).*
 
-This project was carried out as the master thesis on [_"Local Unsupervised Learning with Multimodal Event-Based Sensors and Spiking Neural Networks"_](http://fse.studenttheses.ub.rug.nl/id/eprint/26461) authored by Julian Lopez Gordillo and supervised by: Dr. Lyes Khacef, Prof. Dr. Elisabetta Chicca, Prof. Dr. Alejandro Linares-Barranco, Dr. Antonio Rios-Navarro, and Prof. Dr. Niels Taatgen (MSc in Artificial Intelligence 2019-2021). This project builds upon some previous work that is listed in the section _References_ later on.
+This project was carried out as the master thesis on [_"Local Unsupervised Learning with Multimodal Event-Based 
+Sensors and Spiking Neural Networks"_](http://fse.studenttheses.ub.rug.nl/id/eprint/26461) authored by Julian Lopez 
+Gordillo and supervised by: Dr. Lyes Khacef, Prof. Dr. Elisabetta Chicca, Prof. Dr. Alejandro Linares-Barranco, Dr. 
+Antonio Rios-Navarro, and Prof. Dr. Niels Taatgen (MSc in Artificial Intelligence 2019-2021). This project builds 
+upon some previous works that are listed in the section _References_ later on.
 
 # Instructions
 The project was done in Python 3.8, PyTorch 1.7.1 and BindsNET 0.2.9, although newer versions will probably work just fine. 
 For the complete list of dependencies check the file `requirements.txt`. 
-Bindsnet is directly included as a directory and does not need to be installed.
-For GPU acceleration, the appropriate graphic drivers need to be installed according to the version of PyTorch.
+Bindsnet is directly included as source code and does not need to be installed.
+For GPU acceleration, the appropriate graphic drivers need to be installed and configured. If there is conflict 
+between PyTorch and CUDA, it might be a good idea to check [PyTorch's installation page](https://pytorch.org/get-started/locally/) and install it from there.
 
 ## Installation
 1. Make sure you have a working installation of Python 3.8+ (as well as the pip package manager).
@@ -54,8 +61,10 @@ The following options are available:
   --gpu                 Enable GPU acceleration.
 ```
 
-_Note: Modifying the `--patern_time` option requires having serialised the dataset files with the new pattern_time beforehand.
-For example, changing the `--patern_time` to a different value than default when running `Visual_network.py` requires regenerating the dataset files with that new pattern time (to change in `NMNIST.py`).
+_Note: Modifying the `--pattern_time` option requires having serialised the dataset files with the new pattern_time 
+beforehand.
+For example, changing the `--pattern_time` to a different value than default when running `Visual_network.py` 
+requires regenerating the dataset files with that new pattern time (to change in `NMNIST.py`)._
 
 # Future work
 Throughout the code, you will find some `# PARAMETER`, `# TODO` and `# FUTURE WORK` comments:
