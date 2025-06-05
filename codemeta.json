@@ -1,0 +1,28 @@
+{
+    "@context": "https://w3id.org/codemeta/3.0",
+    "type": "SoftwareSourceCode",
+    "applicationCategory": "Neuromorphic Computing",
+    "author": [
+        {
+            "id": "https://orcid.org/0000-0003-0401-5122",
+            "type": "Person",
+            "email": "julian.lopezgordillo@proton.me",
+            "familyName": "Lopez Gordillo",
+            "givenName": "Julian"
+        }
+    ],
+    "codeRepository": "https://github.com/juliancervos/stdp-nmnist",
+    "description": "Repository for the master thesis titled \"Local Unsupervised Learning of Multimodal Event-Based Data with Spiking Neural Networks\", by Julian Lopez Gordillo (MSc in Artificial Intelligence, 2019-2021).",
+    "keywords": [
+        "neuromorphic-computing",
+        "spiking-neural-networks",
+        "unsupervised-learning",
+        "event-based-vision",
+        "stdp",
+        "pytorch"
+    ],
+    "license": "https://spdx.org/licenses/GPL-3.0",
+    "name": "stdp-nmnist",
+    "programmingLanguage": "Python 3",
+    "developmentStatus": "inactive"
+}

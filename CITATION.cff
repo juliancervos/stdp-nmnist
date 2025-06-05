@@ -1,0 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: stdp-nmnist
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Julian
+    family-names: Lopez Gordillo
+    email: julian.lopezgordillo@proton.me
+    orcid: 'https://orcid.org/0000-0003-0401-5122'
+repository-code: 'https://github.com/juliancervos/stdp-nmnist'
+abstract: >-
+  Repository for the master thesis titled "Local
+  Unsupervised Learning of Multimodal Event-Based Data with
+  Spiking Neural Networks", by Julian Lopez Gordillo (MSc in
+  Artificial Intelligence, 2019-2021).
+keywords:
+  - neuromorphic-computing
+  - spiking-neural-networks
+  - unsupervised-learning
+  - event-based-vision
+  - stdp
+  - pytorch
+license: GPL-3.0
