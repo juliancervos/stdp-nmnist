@@ -12,6 +12,9 @@ authors:
     family-names: Lopez Gordillo
     email: julian.lopezgordillo@proton.me
     orcid: 'https://orcid.org/0000-0003-0401-5122'
+identifiers:
+    - type: swh
+      value: 'swh:1:dir:47f66e5c8d9053e6502cdcad6db5efb0ab19dece'
 repository-code: 'https://github.com/juliancervos/stdp-nmnist'
 abstract: >-
   Repository for the master thesis titled "Local

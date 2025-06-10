@@ -13,6 +13,7 @@
     ],
     "codeRepository": "https://github.com/juliancervos/stdp-nmnist",
     "description": "Repository for the master thesis titled \"Local Unsupervised Learning of Multimodal Event-Based Data with Spiking Neural Networks\", by Julian Lopez Gordillo (MSc in Artificial Intelligence, 2019-2021).",
+    "identifier": "https://archive.softwareheritage.org/swh:1:dir:47f66e5c8d9053e6502cdcad6db5efb0ab19dece",
     "keywords": [
         "neuromorphic-computing",
         "spiking-neural-networks",
